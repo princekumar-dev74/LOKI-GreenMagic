@@ -33,8 +33,6 @@
 
 ---
 
----
-
 ## ╰┈➤🛠️ Tech Stack & Dependencies
 
 | Technology | Purpose | Source / CDN |
@@ -46,7 +44,6 @@
 
 ---
 
----
 
 ## ╰┈➤📂 Project Structure
 
@@ -61,7 +58,6 @@
 ├── script.js
 └── README.md
 ```
----
 ---
 
 ## ╰┈➤ CONNECT
