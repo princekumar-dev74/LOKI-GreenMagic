@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shader Transition</title>
+  <title>Loki Pure Green Theme & Sleek Thunder</title>
   <style>
     * {
       box-sizing: border-box;
-      cursor: none !important; /* Hide standard cursor */
+      cursor: none !important;
     }
 
     html, body {
@@ -16,27 +16,37 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      font-family: system-ui, sans-serif;
-      background: #000000;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #020503;
     }
 
-    /* Dynamic Green Glowing Dot Cursor */
+    /* Subtle Pure Green Flash Overlay */
+    #thunder-flash {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, rgba(5, 46, 22, 0.05) 60%, transparent 85%);
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      mix-blend-mode: screen;
+    }
+
+    /* Dynamic Pure Green Pointer */
     #custom-cursor {
       position: fixed;
       top: 0;
       left: 0;
       width: 8px;
       height: 8px;
-      background: #00ff88;
+      background: #00ffaa;
       border-radius: 50%;
       pointer-events: none;
       z-index: 9999;
       transform: translate(-50%, -50%) scale(1);
-      box-shadow: 0 0 10px #00ff88, 0 0 20px #008044;
-      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.27), background-color 0.2s ease;
+      box-shadow: 0 0 10px #00ffaa, 0 0 20px #042405;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.27), background-color 0.2s ease;
     }
 
-    /* Arrow Energy Stream Canvas */
     #cursor-trail-canvas {
       position: fixed;
       inset: 0;
@@ -44,6 +54,15 @@
       height: 100vh;
       pointer-events: none;
       z-index: 9998;
+    }
+
+    #thunder-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 25;
     }
 
     .page {
@@ -57,21 +76,22 @@
       justify-content: center;
       gap: 1.5rem;
       z-index: 10;
-      background: #000000;
+      background: radial-gradient(circle at center, #06140b 0%, #010402 100%);
     }
 
     #home {
       will-change: transform, opacity, filter;
     }
 
+    /* Center image with slightly refined green glow */
     #home-image {
-      width: 600px;
-      height: 600px;
+      width: 550px;
+      height: 550px;
       object-fit: contain;
-      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+      filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.22)) drop-shadow(0 15px 35px rgba(0, 0, 0, 0.95));
+      transition: filter 0.3s ease;
     }
 
-    /* Fullscreen shader canvas */
     #shader-canvas {
       position: fixed;
       inset: 0;
@@ -97,12 +117,12 @@
     }
 
     #about-image {
-      width: 220px;
-      height: 220px;
+      width: 260px;
+      height: 260px;
       object-fit: contain;
       opacity: 0;
       pointer-events: none;
-      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+      filter: drop-shadow(0 0 16px rgba(0, 255, 136, 0.25)) drop-shadow(0 20px 50px rgba(0, 0, 0, 0.95));
       transform-origin: center center;
       will-change: transform;
     }
@@ -110,19 +130,18 @@
 </head>
 <body>
 
-  <!-- CUSTOM RAGE GREEN CURSOR OVERLAYS -->
+  <div id="thunder-flash"></div>
+  <canvas id="thunder-canvas"></canvas>
+
   <div id="custom-cursor"></div>
   <canvas id="cursor-trail-canvas"></canvas>
 
-  <!-- HOME PAGE WITH CENTRAL IMAGE -->
   <main id="home" class="page">
     <img src="home.png" alt="Home" id="home-image" />
   </main>
 
-  <!-- Fullscreen shader canvas -->
   <canvas id="shader-canvas"></canvas>
 
-  <!-- Interactive Center Image (Loki) -->
   <div id="about-reveal" class="about-reveal">
     <div id="about-lift">
       <img src="Loki.png" alt="About" id="about-image" />
@@ -142,17 +161,14 @@
   <script type="module">
     import * as THREE from 'three'
 
-    // ==========================================
-    // RAGE GREEN CURSOR & AUTO-FADING STREAK
-    // ==========================================
+    // 1. CURSOR & TRAIL SYSTEM (PURE GREEN SHADES)
     const cursorDot = document.getElementById('custom-cursor')
     const trailCanvas = document.getElementById('cursor-trail-canvas')
-    const ctx = trailCanvas.getContext('2d')
+    const trailCtx = trailCanvas.getContext('2d')
 
     let mouseX = window.innerWidth / 2
     let mouseY = window.innerHeight / 2
     let pathHistory = []
-
     let isHovered = false
     let isMoving = false
     let stopTimer = null
@@ -169,7 +185,6 @@
       mouseY = e.clientY
       isMoving = true
 
-      // Position Glowing Central Dot
       gsap.to(cursorDot, {
         x: mouseX,
         y: mouseY,
@@ -177,67 +192,50 @@
         ease: 'power2.out'
       })
 
-      if (!isHovered) {
-        gsap.to(cursorDot, { scale: 1, duration: 0.15 })
-      }
+      if (!isHovered) gsap.to(cursorDot, { scale: 1, duration: 0.15 })
 
-      // Record trajectory points
-      pathHistory.unshift({ x: mouseX, y: mouseY, alpha: 1.0 })
-      if (pathHistory.length > 18) {
-        pathHistory.pop()
-      }
+      pathHistory.unshift({ x: mouseX, y: mouseY })
+      if (pathHistory.length > 18) pathHistory.pop()
 
-      // Reset Movement Idle Check
       clearTimeout(stopTimer)
       stopTimer = setTimeout(() => {
         isMoving = false
-        if (!isHovered) {
-          gsap.to(cursorDot, { scale: 0.6, duration: 0.2 })
-        }
+        if (!isHovered) gsap.to(cursorDot, { scale: 0.65, duration: 0.2 })
       }, 50)
     })
 
-    function renderArrowEnergyStream() {
-      ctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height)
-
-      // Tail smooth shrink on cursor pause
-      if (!isMoving && pathHistory.length > 0) {
-        pathHistory.pop()
-      }
+    function renderTrail() {
+      trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height)
+      if (!isMoving && pathHistory.length > 0) pathHistory.pop()
 
       if (pathHistory.length > 1) {
-        ctx.save()
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
+        trailCtx.save()
+        trailCtx.lineCap = 'round'
+        trailCtx.lineJoin = 'round'
 
         for (let i = 0; i < pathHistory.length - 1; i++) {
           const pt1 = pathHistory[i]
           const pt2 = pathHistory[i + 1]
-
           const ratio = 1 - (i / pathHistory.length)
-          const lineWidth = ratio * 5.5
+          const lineWidth = ratio * 4.5
 
-          ctx.beginPath()
-          ctx.moveTo(pt1.x, pt1.y)
-          ctx.lineTo(pt2.x, pt2.y)
+          trailCtx.beginPath()
+          trailCtx.moveTo(pt1.x, pt1.y)
+          trailCtx.lineTo(pt2.x, pt2.y)
 
-          ctx.lineWidth = lineWidth
-          
-          const g = Math.floor(180 * ratio + 75)
-          ctx.strokeStyle = `rgba(0, ${g}, 120, ${ratio * 0.85})`
-          ctx.shadowBlur = ratio * 10
-          ctx.shadowColor = '#00ff88'
-
-          ctx.stroke()
+          trailCtx.lineWidth = lineWidth
+          const greenVal = Math.floor(200 * ratio + 55)
+          trailCtx.strokeStyle = `rgba(0, ${greenVal}, 120, ${ratio * 0.85})`
+          trailCtx.shadowBlur = ratio * 8
+          trailCtx.shadowColor = '#00ffaa'
+          trailCtx.stroke()
         }
-        ctx.restore()
+        trailCtx.restore()
       }
-
-      requestAnimationFrame(renderArrowEnergyStream)
+      requestAnimationFrame(renderTrail)
     }
-    renderArrowEnergyStream()
+    renderTrail()
 
-    // Hover Scale on Loki / Home image
     const interactables = [document.getElementById('home-image'), document.getElementById('about-image')]
     interactables.forEach((el) => {
       el.addEventListener('mouseenter', () => {
@@ -246,13 +244,111 @@
       })
       el.addEventListener('mouseleave', () => {
         isHovered = false
-        gsap.to(cursorDot, { scale: 1, backgroundColor: '#00ff88', duration: 0.2 })
+        gsap.to(cursorDot, { scale: 1, backgroundColor: '#00ffaa', duration: 0.2 })
       })
     })
 
-    // ==========================================
-    // THREE.JS & SHADER TRANSITION LOGIC
-    // ==========================================
+    // 2. SLEEK & THIN PURE GREEN THUNDER (HIGH SPEED)
+    const tCanvas = document.getElementById('thunder-canvas')
+    const tCtx = tCanvas.getContext('2d')
+    const thunderFlash = document.getElementById('thunder-flash')
+    const homeImage = document.getElementById('home-image')
+    let state = 'home'
+
+    function resizeThunderCanvas() {
+      tCanvas.width = window.innerWidth
+      tCanvas.height = window.innerHeight
+    }
+    resizeThunderCanvas()
+    window.addEventListener('resize', resizeThunderCanvas)
+
+    function drawLightningSegment(x1, y1, x2, y2, displace, branchProb) {
+      if (displace < 3) {
+        tCtx.beginPath()
+        tCtx.moveTo(x1, y1)
+        tCtx.lineTo(x2, y2)
+        tCtx.stroke()
+        return
+      }
+
+      const midX = (x1 + x2) / 2 + (Math.random() - 0.5) * displace
+      const midY = (y1 + y2) / 2 + (Math.random() - 0.5) * displace
+
+      drawLightningSegment(x1, y1, midX, midY, displace / 2, branchProb)
+      drawLightningSegment(midX, midY, x2, y2, displace / 2, branchProb)
+
+      if (Math.random() < branchProb) {
+        const angle = (Math.random() - 0.5) * Math.PI * 0.5
+        const length = displace * (1.1 + Math.random())
+        const branchX = midX + Math.cos(angle) * length
+        const branchY = midY + Math.sin(angle) * length
+        drawLightningSegment(midX, midY, branchX, branchY, displace / 2.2, branchProb * 0.45)
+      }
+    }
+
+    function triggerGreenThunder() {
+      if (state !== 'home') return
+
+      gsap.to(thunderFlash, { opacity: 0.6, duration: 0.04, yoyo: true, repeat: 1, ease: 'power1.inOut' })
+
+      gsap.to(homeImage, {
+        x: () => (Math.random() - 0.5) * 5,
+        y: () => (Math.random() - 0.5) * 5,
+        duration: 0.03,
+        repeat: 2,
+        yoyo: true,
+        onComplete: () => gsap.to(homeImage, { x: 0, y: 0, duration: 0.08 })
+      })
+
+      let frames = 0
+      const startX = Math.random() * tCanvas.width
+      const startY = 0
+      const targetX = startX + (Math.random() - 0.5) * 450
+      const targetY = tCanvas.height * (0.4 + Math.random() * 0.5)
+
+      function animateLightning() {
+        tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height)
+
+        tCtx.save()
+        // Sleek Green Glow Outer Line (Thinner & Crisp)
+        tCtx.strokeStyle = '#00ffaa'
+        tCtx.shadowColor = '#00ffaa'
+        tCtx.shadowBlur = 10
+        tCtx.lineWidth = 2.4
+        drawLightningSegment(startX, startY, targetX, targetY, 100, 0.4)
+
+        // Bright Mint Green Core Line (No Blue)
+        tCtx.strokeStyle = '#d1fae5'
+        tCtx.lineWidth = 1.1
+        tCtx.shadowBlur = 2
+        drawLightningSegment(startX, startY, targetX, targetY, 100, 0.2)
+        tCtx.restore()
+
+        frames++
+        if (frames < 4) {
+          requestAnimationFrame(animateLightning)
+        } else {
+          tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height)
+        }
+      }
+      animateLightning()
+    }
+
+    // High Speed Trigger (Multiple strikes per second)
+    function scheduleNextThunder() {
+      const randomDelay = Math.random() * 600 + 200 
+
+      setTimeout(() => {
+        triggerGreenThunder()
+        if (Math.random() > 0.5) {
+          setTimeout(triggerGreenThunder, 90)
+        }
+        scheduleNextThunder()
+      }, randomDelay)
+    }
+    scheduleNextThunder()
+
+    // 3. SHADER TRANSITION (PURE GREEN PALETTE ONLY)
     const vertexShader = `
       varying vec2 vUv;
       void main() {
@@ -265,6 +361,7 @@
       uniform float uProgress;
       uniform vec3 uColorA;
       uniform vec3 uColorB;
+      uniform vec3 uColorC;
       varying vec2 vUv;
 
       float hash(vec2 p) {
@@ -285,9 +382,9 @@
       float fbm(vec2 p) {
         float v = 0.0;
         float a = 0.5;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
           v += a * noise(p);
-          p = p * 2.0 + vec2(13.7, 9.1);
+          p = p * 2.05 + vec2(13.7, 9.1);
           a *= 0.5;
         }
         return v;
@@ -299,56 +396,54 @@
         vec2 distVec = uv - center;
         float dist = length(distVec);
 
-        float t = uProgress * 6.28;
+        float t = uProgress * 6.2831;
 
         float alpha = 0.0;
         vec3 color = vec3(0.0);
 
         if (uProgress <= 0.5) {
-          // PHASE 1: Wave Wipe
           float pNorm = uProgress / 0.5;
-          vec2 p = uv * 3.0;
-          vec2 warp = vec2(fbm(p + vec2(0.0, t * 0.2)), fbm(p + vec2(5.2, 1.3) - vec2(t * 0.15, 0.0)));
-          float w = fbm(p + 0.9 * warp);
+          vec2 p = uv * 3.5;
+          vec2 warp = vec2(fbm(p + vec2(0.0, t * 0.25)), fbm(p + vec2(5.2, 1.3) - vec2(t * 0.2, 0.0)));
+          float w = fbm(p + 1.1 * warp);
 
-          float waves = sin(uv.x * 6.0 + t) * 0.03 + sin(uv.x * 13.0 - t) * 0.012;
-          float wipe = uv.y + (w - 0.5) * 0.3 + waves;
+          float waves = sin(uv.x * 7.0 + t) * 0.035 + sin(uv.x * 14.0 - t) * 0.015;
+          float wipe = uv.y + (w - 0.5) * 0.35 + waves;
 
           alpha = smoothstep(wipe - 0.1, wipe + 0.1, pNorm * 1.5 - 0.2);
 
-          float tint = clamp((w - 0.5) * 0.4 + 0.5, 0.0, 1.0);
+          float tint = clamp((w - 0.5) * 0.5 + 0.5, 0.0, 1.0);
           color = mix(uColorA, uColorB, tint);
-          color += 0.03 * vec3(sin(w * 8.0 + t), sin(w * 8.0 + t + 2.1), sin(w * 8.0 + t + 4.2));
+          color = mix(color, uColorC, sin(w * 6.28 + t) * 0.5 + 0.5);
 
-          float glow = 1.0 - smoothstep(0.0, 0.25, abs(pNorm - wipe));
-          color += glow * 0.12;
+          float glow = 1.0 - smoothstep(0.0, 0.2, abs(pNorm - wipe));
+          color += glow * vec3(0.05, 0.85, 0.4);
         } else {
-          // PHASE 2: Extended Dissolve Effect
           float pNorm = (uProgress - 0.5) / 0.5;
           
           float angle = atan(distVec.y, distVec.x);
-          vec2 fireUv = vec2(dist * 3.0 - t * 0.2, angle * 2.0);
-          float fireNoise = fbm(fireUv + fbm(fireUv * 1.4));
+          vec2 fireUv = vec2(dist * 3.5 - t * 0.3, angle * 2.5);
+          float fireNoise = fbm(fireUv + fbm(fireUv * 1.5));
 
-          float fireRadius = pNorm * 2.0;
-          float edge = fireRadius - (fireNoise * 0.25);
+          float fireRadius = pNorm * 2.2;
+          float edge = fireRadius - (fireNoise * 0.28);
           
-          float bloom = 1.0 - smoothstep(edge - 0.2, edge + 0.1, dist);
-          float smoothFade = 1.0 - smoothstep(0.5, 1.0, pNorm);
+          float bloom = 1.0 - smoothstep(edge - 0.22, edge + 0.12, dist);
+          float smoothFade = 1.0 - smoothstep(0.45, 1.0, pNorm);
           alpha = bloom * smoothFade;
 
-          float innerGlow = smoothstep(edge - 0.4, edge, dist);
-          color = mix(uColorA, uColorB, fireNoise + innerGlow * 0.5);
-          
-          float rim = smoothstep(0.0, 0.12, abs(dist - edge));
-          color += (1.0 - rim) * vec3(0.4, 1.0, 0.7);
+          float innerGlow = smoothstep(edge - 0.45, edge, dist);
+          color = mix(uColorA, uColorB, fireNoise + innerGlow * 0.6);
+          color = mix(color, uColorC, innerGlow);
+
+          float rim = smoothstep(0.0, 0.1, abs(dist - edge));
+          color += (1.0 - rim) * vec3(0.1, 0.95, 0.5) * 1.8;
         }
 
         gl_FragColor = vec4(color, alpha);
       }
     `
 
-    // Three.js Render Setup
     const canvas = document.getElementById('shader-canvas')
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -357,10 +452,12 @@
     const scene = new THREE.Scene()
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
 
+    // Strictly Green Palettes: Deep Dark Forest Green, Bright Neon Green, Mint Emerald
     const uniforms = {
       uProgress: { value: 0 },
-      uColorA: { value: new THREE.Color('#0f766e') },
-      uColorB: { value: new THREE.Color('#99f6e4') },
+      uColorA: { value: new THREE.Color('#033d24') }, 
+      uColorB: { value: new THREE.Color('#00ffaa') }, 
+      uColorC: { value: new THREE.Color('#055e38') }, 
     }
 
     const material = new THREE.ShaderMaterial({
@@ -386,18 +483,13 @@
     }
     requestAnimationFrame(animate)
 
-    // Animation Controls
-    let state = 'home'
     const homeElem = document.getElementById('home')
-    const homeImage = document.getElementById('home-image')
     const aboutLift = document.getElementById('about-lift')
     const aboutImage = document.getElementById('about-image')
 
-    // Initial setup
     gsap.set(aboutLift, { y: 160 })
     gsap.set(aboutImage, { opacity: 0, scale: 1, x: 0, y: 0 })
 
-    // Extended High-Movement Parallax Offset for Loki Image
     const parallaxX = gsap.quickTo(aboutImage, 'x', { duration: 0.8, ease: 'power2.out' })
     const parallaxY = gsap.quickTo(aboutImage, 'y', { duration: 0.8, ease: 'power2.out' })
 
@@ -405,13 +497,10 @@
       if (state !== 'covered') return
       const relX = e.clientX / window.innerWidth - 0.5
       const relY = e.clientY / window.innerHeight - 0.5
-      
-      // Increased displacement multiplier for larger floating movement
-      parallaxX(relX * 75)
-      parallaxY(relY * 75)
+      parallaxX(relX * 80)
+      parallaxY(relY * 80)
     })
 
-    // Step 1: Cover Screen when home.png is clicked
     function coverScreen() {
       if (state !== 'home') return
       state = 'covering'
@@ -427,22 +516,12 @@
       })
     }
 
-    // Step 2: Reveal Center Image (Loki.png)
     function revealImage() {
       aboutImage.style.pointerEvents = 'auto'
-      gsap.to(aboutLift, {
-        y: 0,
-        duration: 1.0,
-        ease: 'power3.out',
-      })
-      gsap.to(aboutImage, {
-        opacity: 1,
-        duration: 1.0,
-        ease: 'power3.out',
-      })
+      gsap.to(aboutLift, { y: 0, duration: 1.1, ease: 'power3.out' })
+      gsap.to(aboutImage, { opacity: 1, duration: 1.1, ease: 'power3.out' })
     }
 
-    // Step 3: Uncover Burst Transition back to home.png
     function uncoverScreen() {
       if (state !== 'covered') return
       state = 'uncovering'
@@ -459,7 +538,7 @@
 
       tl.to(progress, {
         value: 1.0,
-        duration: 5.0,
+        duration: 7.0,
         ease: 'power1.inOut',
         onComplete() {
           progress.value = 0
@@ -471,14 +550,8 @@
       }, '-=1.0')
 
       tl.fromTo(homeElem, 
-        { opacity: 0, scale: 0.96, filter: 'blur(6px)' },
-        { 
-          opacity: 1, 
-          scale: 1, 
-          filter: 'blur(0px)', 
-          duration: 2.5, 
-          ease: 'power2.out' 
-        },
+        { opacity: 0, scale: 0.95, filter: 'blur(8px)' },
+        { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 3.5, ease: 'power2.out' },
         '-=2.8'
       )
     }
