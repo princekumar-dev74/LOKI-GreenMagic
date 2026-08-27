@@ -21,6 +21,8 @@
     <img src="https://img.shields.io/badge/License-MIT-green">
 </p>
 
+> **WARNING**: This project is intended solely for personal use. Commercial use, reproduction, or redistribution is not permitted.
+
 ---
 
 ## ╰┈➤ Key Features
