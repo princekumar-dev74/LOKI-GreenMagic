@@ -1,7 +1,7 @@
 # PRINCEKUMAR-DEV74 | LOKI - GREENMAGIC
 
 <p align="center">
-  <a href="#" target="_blank">
+  <a href="https://princekumar-dev74.github.io/LOKI-GreenMagic/" target="_blank">
     <img src="assets/preview.png" alt="Project Demo" width="100%">
   </a>
 </p>
