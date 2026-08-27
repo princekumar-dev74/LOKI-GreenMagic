@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shader Transition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      cursor: none !important; /* Standard cursor hide kar diya */
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, sans-serif;
+      background: #000000; /* Pure Dark Black */
+    }
+
+    /* Custom Green Energy Cursor */
+    #custom-cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 16px;
+      height: 16px;
+      background: #00ff88;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px #00ff88, 0 0 25px #00ff88, 0 0 40px #10b981;
+      mix-blend-mode: screen;
+      transition: transform 0.15s ease-out;
+    }
+
+    /* Rage Energy Trails Canvas */
+    #cursor-trail-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    .page {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      z-index: 10;
+      background: #000000;
+    }
+
+    #home {
+      will-change: transform, opacity, filter;
+    }
+
+    #home-image {
+      width: 600px;
+      height: 600px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+      /* Hover animation is completely removed as requested */
+    }
+
+    /* Fullscreen shader canvas */
+    #shader-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .about-reveal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    #about-lift {
+      display: flex;
+      pointer-events: none;
+    }
+
+    #about-image {
+      width: 220px;
+      height: 220px;
+      object-fit: contain;
+      opacity: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+      transform-origin: center center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CUSTOM GREEN RAGE CURSOR OVERLAYS -->
+  <div id="custom-cursor"></div>
+  <canvas id="cursor-trail-canvas"></canvas>
+
+  <!-- HOME PAGE WITH CENTRAL IMAGE -->
+  <main id="home" class="page">
+    <img src="home.png" alt="Home" id="home-image" />
+  </main>
+
+  <!-- Fullscreen shader canvas -->
+  <canvas id="shader-canvas"></canvas>
+
+  <!-- Interactive Center Image (Loki) -->
+  <div id="about-reveal" class="about-reveal">
+    <div id="about-lift">
+      <img src="Loki.png" alt="About" id="about-image" />
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.178.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <script type="module">
+    import * as THREE from 'three'
+
+    // ==========================================
+    // RAGE GREEN ENERGY CURSOR TRAIL LOGIC
+    // ==========================================
+    const cursorDot = document.getElementById('custom-cursor')
+    const trailCanvas = document.getElementById('cursor-trail-canvas')
+    const ctx = trailCanvas.getContext('2d')
+
+    let mouseX = window.innerWidth / 2
+    let mouseY = window.innerHeight / 2
+    const particles = []
+
+    function resizeTrailCanvas() {
+      trailCanvas.width = window.innerWidth
+      trailCanvas.height = window.innerHeight
+    }
+    resizeTrailCanvas()
+    window.addEventListener('resize', resizeTrailCanvas)
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX
+      mouseY = e.clientY
+      
+      // Move central glow dot
+      gsap.to(cursorDot, {
+        x: mouseX,
+        y: mouseY,
+        duration: 0.08,
+        ease: 'power2.out'
+      })
+
+      // Spawn energetic rage particles on movement
+      for (let i = 0; i < 3; i++) {
+        particles.push({
+          x: mouseX + (Math.random() - 0.5) * 8,
+          y: mouseY + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 3,
+          vy: (Math.random() - 0.5) * 3 - 1,
+          size: Math.random() * 4 + 2,
+          life: 1,
+          decay: Math.random() * 0.04 + 0.02
+        })
+      }
+    })
+
+    function renderCursorRageTrail() {
+      ctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height)
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i]
+        p.x += p.vx
+        p.y += p.vy
+        p.life -= p.decay
+        p.size *= 0.95
+
+        if (p.life <= 0 || p.size <= 0.2) {
+          particles.splice(i, 1)
+          continue
+        }
+
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(0, 255, 136, ${p.life})`
+        ctx.shadowBlur = 15
+        ctx.shadowColor = '#00ff88'
+        ctx.fill()
+      }
+
+      requestAnimationFrame(renderCursorRageTrail)
+    }
+    renderCursorRageTrail()
+
+    // Hover effect on interactive elements for the cursor dot
+    const interactables = [document.getElementById('home-image'), document.getElementById('about-image')]
+    interactables.forEach((el) => {
+      el.addEventListener('mouseenter', () => {
+        gsap.to(cursorDot, { scale: 1.8, backgroundColor: '#34d399', duration: 0.2 })
+      })
+      el.addEventListener('mouseleave', () => {
+        gsap.to(cursorDot, { scale: 1, backgroundColor: '#00ff88', duration: 0.2 })
+      })
+    })
+
+    // ==========================================
+    // THREE.JS & SHADER TRANSITION LOGIC
+    // ==========================================
+    const vertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 1.0);
+      }
+    `
+
+    const fragmentShader = `
+      uniform float uProgress;
+      uniform vec3 uColorA;
+      uniform vec3 uColorB;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+          f.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p = p * 2.0 + vec2(13.7, 9.1);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        vec2 center = vec2(0.5);
+        vec2 distVec = uv - center;
+        float dist = length(distVec);
+
+        float t = uProgress * 6.28;
+
+        float alpha = 0.0;
+        vec3 color = vec3(0.0);
+
+        if (uProgress <= 0.5) {
+          // PHASE 1: Original Wave Wipe
+          float pNorm = uProgress / 0.5;
+          vec2 p = uv * 3.0;
+          vec2 warp = vec2(fbm(p + vec2(0.0, t * 0.2)), fbm(p + vec2(5.2, 1.3) - vec2(t * 0.15, 0.0)));
+          float w = fbm(p + 0.9 * warp);
+
+          float waves = sin(uv.x * 6.0 + t) * 0.03 + sin(uv.x * 13.0 - t) * 0.012;
+          float wipe = uv.y + (w - 0.5) * 0.3 + waves;
+
+          alpha = smoothstep(wipe - 0.1, wipe + 0.1, pNorm * 1.5 - 0.2);
+
+          float tint = clamp((w - 0.5) * 0.4 + 0.5, 0.0, 1.0);
+          color = mix(uColorA, uColorB, tint);
+          color += 0.03 * vec3(sin(w * 8.0 + t), sin(w * 8.0 + t + 2.1), sin(w * 8.0 + t + 4.2));
+
+          float glow = 1.0 - smoothstep(0.0, 0.25, abs(pNorm - wipe));
+          color += glow * 0.12;
+        } else {
+          // PHASE 2: Extended Dissolve Effect
+          float pNorm = (uProgress - 0.5) / 0.5;
+          
+          float angle = atan(distVec.y, distVec.x);
+          vec2 fireUv = vec2(dist * 3.0 - t * 0.2, angle * 2.0);
+          float fireNoise = fbm(fireUv + fbm(fireUv * 1.4));
+
+          float fireRadius = pNorm * 2.0;
+          float edge = fireRadius - (fireNoise * 0.25);
+          
+          float bloom = 1.0 - smoothstep(edge - 0.2, edge + 0.1, dist);
+          float smoothFade = 1.0 - smoothstep(0.5, 1.0, pNorm);
+          alpha = bloom * smoothFade;
+
+          float innerGlow = smoothstep(edge - 0.4, edge, dist);
+          color = mix(uColorA, uColorB, fireNoise + innerGlow * 0.5);
+          
+          float rim = smoothstep(0.0, 0.12, abs(dist - edge));
+          color += (1.0 - rim) * vec3(0.4, 1.0, 0.7);
+        }
+
+        gl_FragColor = vec4(color, alpha);
+      }
+    `
+
+    // Three.js Render Setup
+    const canvas = document.getElementById('shader-canvas')
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setSize(window.innerWidth, window.innerHeight)
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+
+    const uniforms = {
+      uProgress: { value: 0 },
+      uColorA: { value: new THREE.Color('#0f766e') },
+      uColorB: { value: new THREE.Color('#99f6e4') },
+    }
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      transparent: true,
+    })
+
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
+    scene.add(mesh)
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight)
+    })
+
+    const progress = { value: 0 }
+
+    function animate() {
+      uniforms.uProgress.value = progress.value
+      renderer.render(scene, camera)
+      requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+
+    // Animation Controls
+    let state = 'home'
+    const homeElem = document.getElementById('home')
+    const homeImage = document.getElementById('home-image')
+    const aboutLift = document.getElementById('about-lift')
+    const aboutImage = document.getElementById('about-image')
+
+    // Initial setup
+    gsap.set(aboutLift, { y: 160 })
+    gsap.set(aboutImage, { opacity: 0, scale: 1, x: 0, y: 0 })
+
+    // Smooth Cursor Parallax Effect
+    const parallaxX = gsap.quickTo(aboutImage, 'x', { duration: 0.6, ease: 'power3.out' })
+    const parallaxY = gsap.quickTo(aboutImage, 'y', { duration: 0.6, ease: 'power3.out' })
+
+    window.addEventListener('mousemove', (e) => {
+      if (state !== 'covered') return
+      const relX = e.clientX / window.innerWidth - 0.5
+      const relY = e.clientY / window.innerHeight - 0.5
+      parallaxX(relX * 30)
+      parallaxY(relY * 30)
+    })
+
+    // Step 1: Cover Screen when home.png is clicked
+    function coverScreen() {
+      if (state !== 'home') return
+      state = 'covering'
+
+      gsap.to(progress, {
+        value: 0.5,
+        duration: 2.2,
+        ease: 'power2.inOut',
+        onComplete() {
+          state = 'covered'
+          revealImage()
+        },
+      })
+    }
+
+    // Step 2: Reveal Center Image (Loki.png)
+    function revealImage() {
+      aboutImage.style.pointerEvents = 'auto'
+      gsap.to(aboutLift, {
+        y: 0,
+        duration: 1.0,
+        ease: 'power3.out',
+      })
+      gsap.to(aboutImage, {
+        opacity: 1,
+        duration: 1.0,
+        ease: 'power3.out',
+      })
+    }
+
+    // Step 3: Uncover Burst Transition back to home.png
+    function uncoverScreen() {
+      if (state !== 'covered') return
+      state = 'uncovering'
+      aboutImage.style.pointerEvents = 'none'
+
+      const tl = gsap.timeline()
+
+      tl.to(aboutImage, {
+        scale: 1.45,
+        opacity: 0,
+        duration: 1.2,
+        ease: 'power2.in',
+      })
+
+      tl.to(progress, {
+        value: 1.0,
+        duration: 5.0,
+        ease: 'power1.inOut',
+        onComplete() {
+          progress.value = 0
+          gsap.set(aboutLift, { y: 160 })
+          gsap.set(aboutImage, { opacity: 0, scale: 1, x: 0, y: 0 })
+          state = 'home'
+          window.dispatchEvent(new Event('transition:done'))
+        },
+      }, '-=1.0')
+
+      tl.fromTo(homeElem, 
+        { opacity: 0, scale: 0.96, filter: 'blur(6px)' },
+        { 
+          opacity: 1, 
+          scale: 1, 
+          filter: 'blur(0px)', 
+          duration: 2.5, 
+          ease: 'power2.out' 
+        },
+        '-=2.8'
+      )
+    }
+
+    homeImage.addEventListener('click', coverScreen)
+    aboutImage.addEventListener('click', uncoverScreen)
+  </script>
+</body>
+</html>
