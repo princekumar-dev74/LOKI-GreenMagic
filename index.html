@@ -7,7 +7,7 @@
   <style>
     * {
       box-sizing: border-box;
-      cursor: none !important; /* Standard cursor hide kar diya */
+      cursor: none !important; /* Hide standard cursor */
     }
 
     html, body {
@@ -17,27 +17,26 @@
       height: 100%;
       overflow: hidden;
       font-family: system-ui, sans-serif;
-      background: #000000; /* Pure Dark Black */
+      background: #000000;
     }
 
-    /* Custom Green Energy Cursor */
+    /* Dynamic Green Glowing Dot Cursor */
     #custom-cursor {
       position: fixed;
       top: 0;
       left: 0;
-      width: 16px;
-      height: 16px;
+      width: 8px;
+      height: 8px;
       background: #00ff88;
       border-radius: 50%;
       pointer-events: none;
       z-index: 9999;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 12px #00ff88, 0 0 25px #00ff88, 0 0 40px #10b981;
-      mix-blend-mode: screen;
-      transition: transform 0.15s ease-out;
+      transform: translate(-50%, -50%) scale(1);
+      box-shadow: 0 0 10px #00ff88, 0 0 20px #008044;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.27), background-color 0.2s ease;
     }
 
-    /* Rage Energy Trails Canvas */
+    /* Arrow Energy Stream Canvas */
     #cursor-trail-canvas {
       position: fixed;
       inset: 0;
@@ -70,7 +69,6 @@
       height: 600px;
       object-fit: contain;
       filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
-      /* Hover animation is completely removed as requested */
     }
 
     /* Fullscreen shader canvas */
@@ -106,12 +104,13 @@
       pointer-events: none;
       filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
       transform-origin: center center;
+      will-change: transform;
     }
   </style>
 </head>
 <body>
 
-  <!-- CUSTOM GREEN RAGE CURSOR OVERLAYS -->
+  <!-- CUSTOM RAGE GREEN CURSOR OVERLAYS -->
   <div id="custom-cursor"></div>
   <canvas id="cursor-trail-canvas"></canvas>
 
@@ -144,7 +143,7 @@
     import * as THREE from 'three'
 
     // ==========================================
-    // RAGE GREEN ENERGY CURSOR TRAIL LOGIC
+    // RAGE GREEN CURSOR & AUTO-FADING STREAK
     // ==========================================
     const cursorDot = document.getElementById('custom-cursor')
     const trailCanvas = document.getElementById('cursor-trail-canvas')
@@ -152,7 +151,11 @@
 
     let mouseX = window.innerWidth / 2
     let mouseY = window.innerHeight / 2
-    const particles = []
+    let pathHistory = []
+
+    let isHovered = false
+    let isMoving = false
+    let stopTimer = null
 
     function resizeTrailCanvas() {
       trailCanvas.width = window.innerWidth
@@ -164,63 +167,85 @@
     window.addEventListener('mousemove', (e) => {
       mouseX = e.clientX
       mouseY = e.clientY
-      
-      // Move central glow dot
+      isMoving = true
+
+      // Position Glowing Central Dot
       gsap.to(cursorDot, {
         x: mouseX,
         y: mouseY,
-        duration: 0.08,
+        duration: 0.05,
         ease: 'power2.out'
       })
 
-      // Spawn energetic rage particles on movement
-      for (let i = 0; i < 3; i++) {
-        particles.push({
-          x: mouseX + (Math.random() - 0.5) * 8,
-          y: mouseY + (Math.random() - 0.5) * 8,
-          vx: (Math.random() - 0.5) * 3,
-          vy: (Math.random() - 0.5) * 3 - 1,
-          size: Math.random() * 4 + 2,
-          life: 1,
-          decay: Math.random() * 0.04 + 0.02
-        })
+      if (!isHovered) {
+        gsap.to(cursorDot, { scale: 1, duration: 0.15 })
       }
+
+      // Record trajectory points
+      pathHistory.unshift({ x: mouseX, y: mouseY, alpha: 1.0 })
+      if (pathHistory.length > 18) {
+        pathHistory.pop()
+      }
+
+      // Reset Movement Idle Check
+      clearTimeout(stopTimer)
+      stopTimer = setTimeout(() => {
+        isMoving = false
+        if (!isHovered) {
+          gsap.to(cursorDot, { scale: 0.6, duration: 0.2 })
+        }
+      }, 50)
     })
 
-    function renderCursorRageTrail() {
+    function renderArrowEnergyStream() {
       ctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height)
 
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i]
-        p.x += p.vx
-        p.y += p.vy
-        p.life -= p.decay
-        p.size *= 0.95
-
-        if (p.life <= 0 || p.size <= 0.2) {
-          particles.splice(i, 1)
-          continue
-        }
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(0, 255, 136, ${p.life})`
-        ctx.shadowBlur = 15
-        ctx.shadowColor = '#00ff88'
-        ctx.fill()
+      // Tail smooth shrink on cursor pause
+      if (!isMoving && pathHistory.length > 0) {
+        pathHistory.pop()
       }
 
-      requestAnimationFrame(renderCursorRageTrail)
-    }
-    renderCursorRageTrail()
+      if (pathHistory.length > 1) {
+        ctx.save()
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
 
-    // Hover effect on interactive elements for the cursor dot
+        for (let i = 0; i < pathHistory.length - 1; i++) {
+          const pt1 = pathHistory[i]
+          const pt2 = pathHistory[i + 1]
+
+          const ratio = 1 - (i / pathHistory.length)
+          const lineWidth = ratio * 5.5
+
+          ctx.beginPath()
+          ctx.moveTo(pt1.x, pt1.y)
+          ctx.lineTo(pt2.x, pt2.y)
+
+          ctx.lineWidth = lineWidth
+          
+          const g = Math.floor(180 * ratio + 75)
+          ctx.strokeStyle = `rgba(0, ${g}, 120, ${ratio * 0.85})`
+          ctx.shadowBlur = ratio * 10
+          ctx.shadowColor = '#00ff88'
+
+          ctx.stroke()
+        }
+        ctx.restore()
+      }
+
+      requestAnimationFrame(renderArrowEnergyStream)
+    }
+    renderArrowEnergyStream()
+
+    // Hover Scale on Loki / Home image
     const interactables = [document.getElementById('home-image'), document.getElementById('about-image')]
     interactables.forEach((el) => {
       el.addEventListener('mouseenter', () => {
-        gsap.to(cursorDot, { scale: 1.8, backgroundColor: '#34d399', duration: 0.2 })
+        isHovered = true
+        gsap.to(cursorDot, { scale: 1.5, backgroundColor: '#34d399', duration: 0.2 })
       })
       el.addEventListener('mouseleave', () => {
+        isHovered = false
         gsap.to(cursorDot, { scale: 1, backgroundColor: '#00ff88', duration: 0.2 })
       })
     })
@@ -280,7 +305,7 @@
         vec3 color = vec3(0.0);
 
         if (uProgress <= 0.5) {
-          // PHASE 1: Original Wave Wipe
+          // PHASE 1: Wave Wipe
           float pNorm = uProgress / 0.5;
           vec2 p = uv * 3.0;
           vec2 warp = vec2(fbm(p + vec2(0.0, t * 0.2)), fbm(p + vec2(5.2, 1.3) - vec2(t * 0.15, 0.0)));
@@ -372,16 +397,18 @@
     gsap.set(aboutLift, { y: 160 })
     gsap.set(aboutImage, { opacity: 0, scale: 1, x: 0, y: 0 })
 
-    // Smooth Cursor Parallax Effect
-    const parallaxX = gsap.quickTo(aboutImage, 'x', { duration: 0.6, ease: 'power3.out' })
-    const parallaxY = gsap.quickTo(aboutImage, 'y', { duration: 0.6, ease: 'power3.out' })
+    // Extended High-Movement Parallax Offset for Loki Image
+    const parallaxX = gsap.quickTo(aboutImage, 'x', { duration: 0.8, ease: 'power2.out' })
+    const parallaxY = gsap.quickTo(aboutImage, 'y', { duration: 0.8, ease: 'power2.out' })
 
     window.addEventListener('mousemove', (e) => {
       if (state !== 'covered') return
       const relX = e.clientX / window.innerWidth - 0.5
       const relY = e.clientY / window.innerHeight - 0.5
-      parallaxX(relX * 30)
-      parallaxY(relY * 30)
+      
+      // Increased displacement multiplier for larger floating movement
+      parallaxX(relX * 75)
+      parallaxY(relY * 75)
     })
 
     // Step 1: Cover Screen when home.png is clicked
