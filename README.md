@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="#" target="_blank">
-    <img src="assets/Preview.png" alt="Project Demo" width="100%">
+    <img src="assets/preview.png" alt="Project Demo" width="100%">
   </a>
 </p>
 
